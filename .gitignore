@@ -1,0 +1,58 @@
+# Python bytecode and build artifacts
+__pycache__/
+*.py[cod]
+build/
+dist/
+wheels/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+
+# Tool caches and coverage reports
+.cache/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Model weights and generated exports
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.onnx.data
+*.onnx_data
+*.engine
+*.plan
+*.torchscript
+
+# Local datasets and generated outputs
+/data/
+/datasets/
+/weights/
+/checkpoints/
+/runs/
+/outputs/
+*.log
+
+# Local environment settings; keep example configurations versioned
+.env
+.env.*
+!.env.example
+!.env.template
+
+# Editor and operating-system files
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
