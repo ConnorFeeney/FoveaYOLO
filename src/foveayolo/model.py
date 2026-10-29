@@ -207,10 +207,30 @@ class YOLO26(nn.Module):
         """Execute the three stages, preserving the detection head's output format."""
         return self._forward_graph(x)
 
+    def fuse(self) -> Self:
+        """Fold Conv BatchNorm layers into convolutions in place for inference.
+
+        Call eval() and load weights first. Repeated calls are harmless. Fusion
+        is irreversible: keep an unfused model/checkpoint for training and for
+        save()/from_pretrained(), which expect the original parameter layout.
+        Detection branches and output formats are preserved.
+        """
+        if any(module.training for module in self.modules()):
+            raise RuntimeError("Call model.eval() before model.fuse()")
+        for module in self.modules():
+            if isinstance(module, Conv) and isinstance(
+                getattr(module, "bn", None), nn.BatchNorm2d
+            ):
+                module.conv = nn.utils.fuse_conv_bn_eval(module.conv, module.bn)
+                del module.bn
+                module.forward = module.forward_fuse
+        return self
+
     def _forward_graph(self, x: torch.Tensor) -> ModelOutput:
         """Keep stride initialization independent of a subclass's custom forward."""
         outputs: list[object] = []
         value, index = self.forward_stage(self.backbone, x, 0, outputs)
+        print(f"P5: {cast(torch.Tensor, outputs[10]).shape}\nP4: {cast(torch.Tensor, outputs[6]).shape}\nP3: {cast(torch.Tensor, outputs[4]).shape}")
         value, index = self.forward_stage(self.neck, value, index, outputs)
         value, _ = self.forward_stage(self.head, value, index, outputs)
         return cast(ModelOutput, value)

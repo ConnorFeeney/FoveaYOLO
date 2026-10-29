@@ -78,6 +78,46 @@ def test_custom_channels_classes_and_raw_outputs() -> None:
     assert not raw["one2one"]["feats"][0].requires_grad
 
 
+@pytest.mark.parametrize("end2end", (False, True))
+def test_fusion_preserves_eval_outputs(end2end: bool) -> None:
+    model = YOLO26("n", num_classes=3).eval()
+    model.end2end = end2end
+    # Exercise learned statistics and affine parameters, not just default BN.
+    with torch.no_grad():
+        for module in model.modules():
+            if isinstance(module, torch.nn.BatchNorm2d):
+                assert module.running_mean is not None
+                assert module.running_var is not None
+                _ = module.running_mean.uniform_(-0.2, 0.2)
+                _ = module.running_var.uniform_(0.5, 1.5)
+                _ = module.weight.uniform_(0.8, 1.2)
+                _ = module.bias.uniform_(-0.1, 0.1)
+        images = torch.rand(1, 3, 64, 96)
+        expected = cast(EvalOutput, model(images))
+        assert model.fuse() is model
+        assert not any(
+            isinstance(module, torch.nn.BatchNorm2d) for module in model.modules()
+        )
+        actual = cast(EvalOutput, model(images))
+        torch.testing.assert_close(actual, expected, rtol=1e-4, atol=1e-4)
+        assert model.fuse() is model
+        torch.testing.assert_close(model(images), actual, rtol=0, atol=0)
+
+
+def test_fusion_requires_eval_before_mutating_model() -> None:
+    model = YOLO26("n")
+    stem = cast(Conv, model.backbone[0])
+    convolution = stem.conv
+    with pytest.raises(RuntimeError, match="model.eval"):
+        _ = model.fuse()
+    _ = model.eval()
+    _ = model.detect.train()
+    with pytest.raises(RuntimeError, match="model.eval"):
+        _ = model.fuse()
+    assert stem.conv is convolution
+    assert isinstance(stem.bn, torch.nn.BatchNorm2d)
+
+
 def test_decoding_matches_raw_head_and_refreshes_geometry() -> None:
     model = YOLO26("n", num_classes=3).eval()
     head = model.detect

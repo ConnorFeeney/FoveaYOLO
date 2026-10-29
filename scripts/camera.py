@@ -11,7 +11,7 @@ from foveayolo import YOLO26
 def main() -> None:
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Running on {device}")
-    model = YOLO26.from_pretrained("yolo26n.pt", device=device)
+    model = YOLO26.from_pretrained("yolo26n.pt", device=device).eval().fuse()
     model.end2end = True
     camera = cv2.VideoCapture(0)
 
