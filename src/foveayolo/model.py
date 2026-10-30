@@ -124,7 +124,7 @@ def _build(
         if i == 0:
             channels = []
         channels.append(out_channels)
-    saved = sorted(save)
+    saved = sorted(set(save))
     stages: dict[str, nn.Sequential] = {}
     start = 0
     for name, section in sections:
